@@ -23,6 +23,7 @@ limitations under the License.
 #include "tensorflow/core/lib/io/path.h"
 #include "tensorflow/core/lib/strings/numbers.h"
 #include "tensorflow/core/platform/env.h"
+#include "tensorflow/core/util/env_var.h"
 #include "tensorflow_serving/core/servable_data.h"
 #include "tensorflow_serving/core/servable_id.h"
 
@@ -76,7 +77,90 @@ std::set<string> GetDeletedServables(
   return deleted_servables;
 }
 
-// Like PollFileSystemForConfig(), but for a single servable.
+bool ServeMultipleModelVersions() {
+  bool value;
+  Status status = ReadBoolFromEnvVar("TF_SERVING_MULTIPLE_VERSIONS", true, &value);
+
+  if (!status.ok()) {
+    LOG(ERROR) << status.error_message();
+  }
+
+  LOG(INFO) << "Should serve multiple model versions:" << value;
+
+  return value;
+}
+
+void EmitAllVersions(
+    const FileSystemStoragePathSourceConfig::ServableToMonitor& servable,
+    std::vector<ServableData<StoragePath>>* versions,
+    const std::vector<string>& children) {
+
+  // Identify all the versions, among children that can be interpreted as
+  // version numbers.
+  int version_child = -1;
+  int64 found_version;
+  bool model_aspired = false;
+
+  for (int i = 0; i < children.size(); ++i) {
+    const string& child = children[i];
+    int64 child_version_num;
+    if (!strings::safe_strto64(child.c_str(), &child_version_num)) {
+      continue;
+    }
+
+    version_child = i;
+    found_version = child_version_num;
+    // Emit all the aspired-versions data.
+    if (version_child >= 0) {
+      const ServableId servable_id = {servable.servable_name(), found_version};
+      const string full_path =
+          io::JoinPath(servable.base_path(), children[version_child]);
+      versions->emplace_back(ServableData<StoragePath>(servable_id, full_path));
+      model_aspired = true;
+    }
+  }
+
+  if (!model_aspired) {
+    LOG(WARNING) << "No versions of servable " << servable.servable_name()
+                 << " found under base path " << servable.base_path();
+  }
+}
+
+void EmitLatestVersion(
+    const FileSystemStoragePathSourceConfig::ServableToMonitor& servable,
+    std::vector<ServableData<StoragePath>>* versions,
+    const std::vector<string>& children) {
+
+  // Identify the latest version, among children that can be interpreted as
+  // version numbers.
+  int latest_version_child = -1;
+  int64 latest_version;
+  for (int i = 0; i < children.size(); ++i) {
+    const string& child = children[i];
+    int64 child_version_num;
+    if (!strings::safe_strto64(child.c_str(), &child_version_num)) {
+      continue;
+    }
+
+    if (latest_version_child < 0 || latest_version < child_version_num) {
+      latest_version_child = i;
+      latest_version = child_version_num;
+    }
+  }
+
+  // Emit the aspired-versions data.
+  if (latest_version_child >= 0) {
+    const ServableId servable_id = {servable.servable_name(), latest_version};
+    const string full_path =
+        io::JoinPath(servable.base_path(), children[latest_version_child]);
+    versions->emplace_back(ServableData<StoragePath>(servable_id, full_path));
+  } else {
+    LOG(WARNING) << "No versions of servable " << servable.servable_name()
+                 << " found under base path " << servable.base_path();
+  }
+}
+
+// Like PollFileSystemForConfig(), but for servable
 Status PollFileSystemForServable(
     const FileSystemStoragePathSourceConfig::ServableToMonitor& servable,
     std::vector<ServableData<StoragePath>>* versions) {
@@ -105,32 +189,10 @@ Status PollFileSystemForServable(
   children.clear();
   children.insert(children.begin(), real_children.begin(), real_children.end());
 
-  // Identify the latest version, among children that can be interpreted as
-  // version numbers.
-  int latest_version_child = -1;
-  int64 latest_version;
-  for (int i = 0; i < children.size(); ++i) {
-    const string& child = children[i];
-    int64 child_version_num;
-    if (!strings::safe_strto64(child.c_str(), &child_version_num)) {
-      continue;
-    }
-
-    if (latest_version_child < 0 || latest_version < child_version_num) {
-      latest_version_child = i;
-      latest_version = child_version_num;
-    }
-  }
-
-  // Emit the aspired-versions data.
-  if (latest_version_child >= 0) {
-    const ServableId servable_id = {servable.servable_name(), latest_version};
-    const string full_path =
-        io::JoinPath(servable.base_path(), children[latest_version_child]);
-    versions->emplace_back(ServableData<StoragePath>(servable_id, full_path));
+  if (ServeMultipleModelVersions()) {
+    EmitAllVersions(servable, versions, children);
   } else {
-    LOG(WARNING) << "No versions of servable " << servable.servable_name()
-                 << " found under base path " << servable.base_path();
+    EmitLatestVersion(servable, versions, children);
   }
 
   return Status::OK();

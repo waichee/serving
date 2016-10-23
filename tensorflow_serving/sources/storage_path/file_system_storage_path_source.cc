@@ -79,7 +79,7 @@ std::set<string> GetDeletedServables(
 
 bool ServeMultipleModelVersions() {
   bool value;
-  Status status = ReadBoolFromEnvVar("TF_SERVING_MULTIPLE_VERSIONS", false, &value);
+  Status status = ReadBoolFromEnvVar("TF_SERVING_MULTIPLE_VERSIONS", true, &value);
 
   if (!status.ok()) {
     LOG(ERROR) << status.error_message();

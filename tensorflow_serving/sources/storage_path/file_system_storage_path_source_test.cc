@@ -150,6 +150,7 @@ TEST(FileSystemStoragePathSourceTest, MultipleVersions) {
       io::JoinPath(base_path, "non_numerical_child")));
   TF_ASSERT_OK(Env::Default()->CreateDir(io::JoinPath(base_path, "42")));
   TF_ASSERT_OK(Env::Default()->CreateDir(io::JoinPath(base_path, "17")));
+  setenv("TF_SERVING_MULTIPLE_VERSIONS","0",1); // Set environment variable to allow single version
 
   auto config = test_util::CreateProto<FileSystemStoragePathSourceConfig>(
       strings::Printf("servable_name: 'test_servable_name' "

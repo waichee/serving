@@ -155,7 +155,7 @@ export TF_SERVING_MULTIPLE_VERSIONS=1
 
 If you would to
 start customizing, you are encouraged to understand the components that it
-creates internally, and how to configure them. 
+creates internally, and how to configure them.
 
 It is worth mentioning that TensorFlow Serving is designed from scratch to be
 very flexible and extensible. You can build various plugins to customize system

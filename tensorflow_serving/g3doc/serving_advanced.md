@@ -143,9 +143,19 @@ With all these, `ServerCore` internally does the following:
   the `SessionBundleSourceAdapter`.
 
 Whenever a new version is available, this `AspiredVersionsManager` always
-unloads the old version and replaces it with the new one. If you want to
+unloads the old version and replaces it with the new one. The default behavior means that
+there will only be one version of the model served at a given time (and that version will be the 
+latest version). The latest version is determined from the model folder name which should be numeric.
+If you would like to serve all the versions available in `model_base_path`, you can set the following environment 
+variable before compiling Tensorflow Serving from source.
+
+~~~
+export TF_SERVING_MULTIPLE_VERSIONS=1
+~~~
+
+If you would to
 start customizing, you are encouraged to understand the components that it
-creates internally, and how to configure them.
+creates internally, and how to configure them. 
 
 It is worth mentioning that TensorFlow Serving is designed from scratch to be
 very flexible and extensible. You can build various plugins to customize system

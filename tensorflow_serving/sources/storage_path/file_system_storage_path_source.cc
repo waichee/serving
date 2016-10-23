@@ -84,6 +84,9 @@ bool ServeMultipleModelVersions() {
   if (!status.ok()) {
     LOG(ERROR) << status.error_message();
   }
+
+  LOG(INFO) << "Should serve multiple model versions:" << value;
+
   return value;
 }
 

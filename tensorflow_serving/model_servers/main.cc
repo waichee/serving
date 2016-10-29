@@ -74,6 +74,8 @@ using tensorflow::serving::AspiredVersionPolicy;
 using tensorflow::serving::BatchingParameters;
 using tensorflow::serving::EagerLoadPolicy;
 using tensorflow::serving::EventBus;
+using tensorflow::serving::FileSystemStoragePathSourceConfig;
+using tensorflow::serving::FileSystemStoragePathSourceConfig_VersionPolicy_IsValid;
 using tensorflow::serving::Loader;
 using tensorflow::serving::ModelServerConfig;
 using tensorflow::serving::ServableState;
@@ -191,11 +193,13 @@ int main(int argc, char** argv) {
   tensorflow::string model_name = "default";
   tensorflow::int32 file_system_poll_wait_seconds = 1;
   tensorflow::string model_base_path;
+  tensorflow::int32 model_version_policy = FileSystemStoragePathSourceConfig::LATEST_VERSION;
   std::vector<tensorflow::Flag> flag_list = {
       tensorflow::Flag("port", &port, "port to listen on"),
       tensorflow::Flag("enable_batching", &enable_batching, "enable batching"),
       tensorflow::Flag("model_name", &model_name, "name of model"),
       tensorflow::Flag("file_system_poll_wait_seconds", &file_system_poll_wait_seconds, "interval in seconds between each poll of the file system for new model version"),
+      tensorflow::Flag("model_version_policy", &model_version_policy, "index for the version policy enum to determine the number of model versions to be served at the same time. Default is 0 and will serve only the latest version. See file_system_storage_path_source.proto for the list of possible indexes for VersionPolicy."),
       tensorflow::Flag("model_base_path", &model_base_path,
                        "path to export (required)")};
   string usage = tensorflow::Flags::Usage(argv[0], flag_list);
@@ -225,6 +229,9 @@ int main(int argc, char** argv) {
   core_config.aspired_version_policy =
       std::unique_ptr<AspiredVersionPolicy>(new EagerLoadPolicy);
   core_config.file_system_poll_wait_seconds = file_system_poll_wait_seconds;
+  if (FileSystemStoragePathSourceConfig_VersionPolicy_IsValid(model_version_policy)) {
+    core_config.model_version_policy = model_version_policy;
+  }
 
   std::unique_ptr<ServerCore> core;
   TF_CHECK_OK(ServerCore::Create(

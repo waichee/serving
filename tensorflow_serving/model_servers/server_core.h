@@ -75,6 +75,10 @@ struct ServerCoreConfig {
   // Maximum number of times we retry loading a model, after the first failure,
   // before we give up"
   int32 max_num_load_retries = 5;
+
+  // Version policy for the servable indicating how many versions of the model we should serve at the same time.
+  int32 model_version_policy = FileSystemStoragePathSourceConfig::LATEST_VERSION;
+
 };
 
 namespace test_util {

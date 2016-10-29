@@ -256,6 +256,7 @@ FileSystemStoragePathSourceConfig ServerCore::CreateStoragePathSourceConfig(
     FileSystemStoragePathSourceConfig::ServableToMonitor* servable =
         source_config.add_servables();
     servable->set_servable_name(model.name());
+    servable->set_version_policy(static_cast<FileSystemStoragePathSourceConfig_VersionPolicy>(server_core_config_.model_version_policy));
     servable->set_base_path(model.base_path());
   }
   return source_config;
